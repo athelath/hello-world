@@ -23,11 +23,13 @@ def main():
             print(colored('It`s not a number! Try again, please!', 'red'))
         except KeyboardInterrupt:
             sys.exit(0)
-        else:
+        else:    
+            stat_secret = sipconf_peers(sip)
+            rtm_secret = rtm_peers(sip)
             try:
                 if parse_file(conf_file) == 1:
-	            stat_secret = sipconf_peers(sip)
-	            rtm_secret = rtm_peers(sip)
+	   #         stat_secret = sipconf_peers(sip)
+           #         rtm_secret = rtm_peers(sip)
 
                     if stat_secret == '0':
                         print(colored("Realtime technology, this peer is only in DB", 'green') + '\n'  
@@ -41,6 +43,9 @@ def main():
 			+ "(static) " + stat_secret)
                         choose(sip, stat_secret)
                 else:
+	    #        rtm_secret = rtm_peers(sip)
+            #        stat_secret = sipconf_peers(sip)
+
                     if stat_secret == '0':
                         print(colored("Static technology, but no such peer in /etc/asterisk/sip.conf", 'green') + '\n' 
 			+ "(rtm) " + rtm_secret)
@@ -52,7 +57,8 @@ def main():
 			+ "(rtm)" + rtm_secret + '\n' 
 			+ "(static) " + stat_secret)
                         choose(sip, stat_secret)
-            except UnboundLocalError:
+#            except UnboundLocalError:
+            except ValueError:
                 print(colored('No such peer in DB! Try again, please!', 'red'))
 
 def parse_file(conf_file):
@@ -73,10 +79,14 @@ def rtm_peers(sip):
         cursor = db.cursor()
         sql = "SELECT secret FROM SIP WHERE sip_name LIKE '%" + str(sip) + "%'"
         cursor.execute(sql)
-        data = cursor.fetchall()
-        for rec in data:
-            secret = rec
-    except _mysql.Error, e:
+        rows_count = cursor.execute(sql)
+	if rows_count > 0:
+	    data = cursor.fetchall()
+            for rec in data:
+                secret = rec
+        else:
+            return str('None')
+    except MySQLdb.Error, e:
         print(colored("Error %d: %s" % (e.args[0], e.args[1]), 'red'))
     finally:
         if db:
@@ -106,18 +116,12 @@ def choose(sip, secret):
 
 def sipconf_peers(sip):
     try:
-#        config = configparser.ConfigParser(defaults=None, comment_prefixes=(';'))
-#        config = configparser.ConfigParser()
-        config = configparser.ConfigParser(comment_prefixes=(';', '-'))
+        config = configparser.ConfigParser()
         config.read(sip_conf)
         secret = config.get(str(sip), "secret")
-#    except configparser.NoSectionError, configparser.ParsingError:
     except configparser.NoSectionError:
         print(colored("No such section [" + str(sip) + "] in /etc/asterisk/sip.conf", 'red'))
 	secret = 0
-#    except TypeError:
-#        print(colored("TypeError", 'red'))
-#        secret = 0
     return str(secret)
 
 if __name__ == "__main__":
